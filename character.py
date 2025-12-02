@@ -119,6 +119,10 @@ class Character(pygame.sprite.Sprite):
         """ SNAP THE PLAYER TO GRID COORDINATES MAKING NAVIGATOR EASIER"""
         self.snap_to_grid(action)
 
+        # Check if x, y posotion is within game area
+        self.play_area_restriction(64,(gs.COLS - 1 ) * 64, gs.Y_OFFSET + 64, ((gs.ROWS -1 ) * 64) + gs.Y_OFFSET )   
+        
+
     def snap_to_grid(self,action):
         """ SNAP THE PLAYER TO GRID COORDINATES MAKING NAVIGATOR EASIER"""
         x_pos = self.x % gs.SIZE
@@ -134,3 +138,14 @@ class Character(pygame.sprite.Sprite):
                 self.y = self.y - y_post
             if y_post >= 52:
                 self.y = self.y + (gs.SIZE - y_post)
+
+    def play_area_restriction(self, left_x, right_x, top_y, bottom_y):
+        """ Check player coords to ensure remains within play area """
+        if self.x  < left_x:
+            self.x = left_x
+        elif self.x > right_x:
+            self.x = right_x
+        elif self.y < top_y:
+            self.y = top_y
+        elif self.y > bottom_y:
+            self.y = bottom_y                    
