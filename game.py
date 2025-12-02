@@ -20,7 +20,7 @@ class Game:
     # self.hard_blocks = pygame.sprite.Group()
     # self.soft_block = pygame.sprite.Group()
     self.groups = {
-      "hard_blocks": pygame.sprite.Group(),
+      "hard_block": pygame.sprite.Group(),
       "soft_block": pygame.sprite.Group(),
       "player": pygame.sprite.Group()  }
     
