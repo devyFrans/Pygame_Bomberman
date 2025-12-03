@@ -12,8 +12,6 @@ class Character(pygame.sprite.Sprite):
         self.col_num = col_num
         self.size = size
 
-
-
         # CHARACTER POSITION
         self.x = self.col_num * self.size 
         self.y = (self.row_num * self.size) + gs.Y_OFFSET
@@ -31,9 +29,12 @@ class Character(pygame.sprite.Sprite):
         self.anim_time_set = pygame.time.get_ticks()
         self.image_dict = image_dict
         self.image = self.image_dict[self.action][self.index]
-
+        # --- HITBOX SETUP ---
         self.rect = self.image.get_rect(topleft=(self.x, self.y))
         self.rect.inflate_ip(-20,-20)
+        # Offset to keep the hitbox centered inside the image
+        # Bagong Add ito. 
+        self.offset = 10
 
     def input(self):
         for event in pygame.event.get():
@@ -63,9 +64,16 @@ class Character(pygame.sprite.Sprite):
     def update(self):
         pass
 
-    def draw(self, window):
-        window.blit(self.image, (self.x, self.y))
+    def draw(self, window, offset=0):
+        # `offset` is optional to keep compatibility with other objects
+        # that are drawn without camera offset. Default is 0 (no offset).
+        window.blit(self.image, (self.x - offset, self.y - offset))
         #pygame.draw.rect(window, gs.RED, self.rect, 1)
+
+        # Optional: Uncomment to see the red hitbox for debugging
+        # debug_rect = self.rect.copy()
+        # debug_rect.x -= offset
+        # pygame.draw.rect(window, gs.RED, debug_rect, 1)
 
     def animate(self,action):
         """Switches between images in order to animate movement"""
@@ -78,8 +86,25 @@ class Character(pygame.sprite.Sprite):
             self.image = self.image_dict[action][self.index]
             self.anim_time_set = pygame.time.get_ticks()
 
-    def move(self,action):
-       
+    def check_collision(self):
+        """
+        Checks for collisions with Hard and Soft blocks.
+        Returns TRUE if we hit a block that is NOT passable.
+        """
+        # 1. Get a list of all blocks we are touching
+        hard_hits = pygame.sprite.spritecollide(self, self.GAME.groups["hard_block"], False)
+        soft_hits = pygame.sprite.spritecollide(self, self.GAME.groups["soft_block"], False)
+        all_hits = hard_hits + soft_hits
+
+        # 2. Check each block to see if it is passable
+        for block in all_hits:
+            if hasattr(block, 'passable') and block.passable == False:
+                return True # We hit a solid wall!
+            
+        return False # No solid collisions found
+
+
+    def move(self, action):
         if not self.alive:
             return
         
@@ -87,65 +112,38 @@ class Character(pygame.sprite.Sprite):
             self.action = action
             self.index = 0
 
-        old_x = self.x
-        old_y = self.y
+        dx = 0
+        dy = 0
 
-        direction = {
-            "walk_left": -self.speed, 
-            "walk_right": self.speed, 
-            "walk_up": -self.speed, 
-            "walk_down": self.speed
-        }
+        if action == "walk_left":
+            dx = -self.speed
+        elif action == "walk_right":
+            dx = self.speed
+        elif action == "walk_up":
+            dy = -self.speed
+        elif action == "walk_down":
+            dy = self.speed
 
-        if action in ["walk_left", "walk_right"]:
-            self.x += direction[action]
-        elif action in ["walk_up", "walk_down"]:
-            self.y += direction[action]        
-
-        offset = 10
-        self.rect.topleft = (self.x + offset, self.y + offset)
-
-        hit_hard = pygame.sprite.spritecollideany(self, self.GAME.groups["hard_block"])
-        hit_soft = pygame.sprite.spritecollideany(self, self.GAME.groups["soft_block"])   
-
-        if hit_hard or hit_soft:
-            self.x = old_x
-            self.y = old_y
-            self.rect.topleft = (self.x + offset,  self.y + offset) # Reset rect to old safe spot
-
-        self.animate(action)   
-
-                    
-        """ SNAP THE PLAYER TO GRID COORDINATES MAKING NAVIGATOR EASIER"""
-        self.snap_to_grid(action)
-
-        # Check if x, y posotion is within game area
-        self.play_area_restriction(64,(gs.COLS - 1 ) * 64, gs.Y_OFFSET + 64, ((gs.ROWS -1 ) * 64) + gs.Y_OFFSET )   
+        # --- PHASE 1: MOVE X-AXIS ---
+        self.x += dx
+        self.rect.x = int(self.x + self.offset)
         
+        # Check collision using the new passable-aware logic
+        if self.check_collision():
+            self.x -= dx # Undo X movement
+            self.rect.x = int(self.x + self.offset)
 
-    def snap_to_grid(self,action):
-        """ SNAP THE PLAYER TO GRID COORDINATES MAKING NAVIGATOR EASIER"""
-        x_pos = self.x % gs.SIZE
-        y_post = (self.y - gs.Y_OFFSET) % gs.SIZE
+        # --- PHASE 2: MOVE Y-AXIS ---
+        self.y += dy
+        self.rect.y = int(self.y + self.offset)
+        
+        # Check collision using the new passable-aware logic
+        if self.check_collision():
+            self.y -= dy # Undo Y movement
+            self.rect.y = int(self.y + self.offset)
 
-        if action in ["walk_up","walk_down"]:
-            if x_pos <= 12:
-                self.x = self.x - x_pos
-            if x_pos >= 52:
-                self.x = self.x + (gs.SIZE - x_pos)
-        elif action in ["walk_left", "walk_right"]:
-            if y_post <= 12:
-                self.y = self.y - y_post
-            if y_post >= 52:
-                self.y = self.y + (gs.SIZE - y_post)
-
-    def play_area_restriction(self, left_x, right_x, top_y, bottom_y):
-        """ Check player coords to ensure remains within play area """
-        if self.x  < left_x:
-            self.x = left_x
-        elif self.x > right_x:
-            self.x = right_x
-        elif self.y < top_y:
-            self.y = top_y
-        elif self.y > bottom_y:
-            self.y = bottom_y                    
+        # --- FINAL UPDATES ---
+        self.animate(action)   
+        
+        # Update Camera based on the center of the player
+        self.GAME.update_x_camera_offset_player_position(self.rect.centerx)                 

@@ -34,10 +34,11 @@ class Blocks(pygame.sprite.Sprite):
     self.rect = self.image.get_rect(topleft=(self.x, self.y))
 
   def update(self):
-   pass
+    pass
 
-  def draw(self,window):
-    window.blit(self.image, self.rect)
+  def draw(self, window, offset=0):
+    # Draw block shifted by horizontal camera offset
+    window.blit(self.image, (self.x - offset, self.y))
 
   def __repr__(self):
     return "'#'"
