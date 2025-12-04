@@ -41,7 +41,7 @@ class Assets:
             resize=True            
         )
 
-        self.sprite_sheet = self.load_sprite_sheet("images", "bomb.png") # Removed hardcoded size | THIS IS FOR BOMB
+        self.sprite_sheet = self.load_sprite_sheet("images", "bomb.png")# THIS IS FOR BOMB
         self.bomb = self.load_sprite_range(
             gs.BOMB, # Use the coordinates defined in gamesetting
             self.sprite_sheet, # Use the same sprite sheet

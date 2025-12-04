@@ -51,7 +51,7 @@ class Blocks(pygame.sprite.Sprite):
     self.y = (self.row * self.size) + self.y_offset
 
     # Block attributes - passable=False means solid wall (blocks all movement)
-    self.passable = False
+    self.passable = True
 
     # Block display/sprite
     self.image_list = images  # List of animation frames (if any)
